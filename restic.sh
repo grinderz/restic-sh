@@ -30,7 +30,7 @@ function check {
 }
 
 function check_all {
-    ~/bin/restic check
+    ~/bin/restic check --read-data=true
 }
 
 case "$1" in
@@ -44,8 +44,7 @@ case "$1" in
         check_all
     ;;
     *)
-        ~/bin/restic "$@" \
-        	--cache-dir=${RESTIC_CACHEDIR}
+        ~/bin/restic "$@" --cache-dir=${RESTIC_CACHEDIR}
     ;;
 esac
 
