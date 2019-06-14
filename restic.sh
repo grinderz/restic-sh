@@ -2,49 +2,78 @@
 
 set -euo pipefail
 
-source ~/restic.env
+function exit_error { echo "${1}" >&2; exit "${2:-1}"; }
+
+ARGS=()
+CONFIG="/etc/restic"
+while [[ $# -gt 0 ]]; do
+    key="${1}"
+    case ${key} in
+        -c|--config-dir)
+        CONFIG="${2}"
+        shift
+        shift
+        ;;
+        *)
+        ARGS+=("$1") # save it in an array for later
+        shift # past argument
+        ;;
+    esac
+done
+set -- "${ARGS[@]}" 
+
+[ -d "${CONFIG}" ] || exit_error "config dir does not exists: ${CONFIG}" 
+
+source ${CONFIG}/restic.env
+
+if [[ $RESTIC_PASSWORD_FILE != /* ]]; then
+    RESTIC_PASSWORD_FILE="${CONFIG}/${RESTIC_PASSWORD_FILE}"
+fi
+
+if [[ $FILES_FROM != /* ]]; then
+    FILES_FROM="${CONFIG}/${FILES_FROM}"
+fi
 
 KEEP_POLICY=(
-    --keep-last=2
-    --keep-daily=7
-    --keep-weekly=8
-    --keep-monthly=12
-    --keep-yearly=10
+    --keep-last=${KEEP_LAST}
+    --keep-daily=${KEEP_DAILY}
+    --keep-weekly=${KEEP_WEEKLY}
+    --keep-monthly=${KEEP_MONTHLY}
+    --keep-yearly=${KEEP_YEARLY}
 )
 
 function backup {
-    ~/bin/restic backup \
-		--files-from=${RESTIC_FILESFROM} \
-		--tag=cron \
-		--cache-dir=${RESTIC_CACHEDIR} \
+    "${BINARY}" backup \
+		--files-from=${FILES_FROM} \
+		--cache-dir=${CACHE_DIR} \
 		--exclude-caches
-    ~/bin/restic forget \
-		--tag=cron \
-		--cache-dir=${RESTIC_CACHEDIR} \
+    "${BINARY}" forget \
+		--cache-dir=${CACHE_DIR} \
+        --group-by="paths,tags" \
 		--prune ${KEEP_POLICY[@]}
 }
 
-function check {
-    ~/bin/restic check \
+function check_subset {
+    "${BINARY}" check \
     	--read-data-subset=$(($RANDOM % 4 + 1))/4
 }
 
-function check_all {
-    ~/bin/restic check --read-data=true
+function check {
+    "${BINARY}" check --read-data=true
 }
 
 case "$1" in
     --backup)
         backup
     ;;
+    --check-subset)
+        check_subset
+    ;;
     --check)
         check
     ;;
-    --check-all)
-        check_all
-    ;;
     *)
-        ~/bin/restic "$@" --cache-dir=${RESTIC_CACHEDIR}
+        "${BINARY}" "${ARGS}" --cache-dir=${CACHE_DIR}
     ;;
 esac
 
