@@ -73,7 +73,7 @@ case "$1" in
         check
     ;;
     *)
-        "${BINARY}" "${ARGS}" --cache-dir=${CACHE_DIR}
+        "${BINARY}" "${ARGS[@]}" --cache-dir=${CACHE_DIR}
     ;;
 esac
 
